@@ -35,22 +35,37 @@ async function run() {
 
     // user api
     app.post("/user", async (req, res) => {
-      console.log(userInfo);
       const result = await usersCollection.insertOne(userInfo);
       res.send(result);
     });
-
     // class api
     app.get("/topSixClass", async (req, res) => {
-      const result = await classesCollection
-        .find()
-        .sort({ enrolledStudentsId: -1 })
-        .limit(4)
-        .toArray();
+      // const query = { approved_status: "approve" };
+      // const result = await classesCollection
+      //   .find(query)
+      //   .sort({ enrolledStudentsId: -1 })
+      //   .limit(6)
+      //   .toArray();
+      const pipeline = [
+        {
+          $match: {
+            approved_status: "approve",
+            enrolledStudentsId: { $exists: true },
+          },
+        },
+        {
+          $addFields: {
+            enrolledStudentsCount: { $size: "$enrolledStudentsId" },
+          },
+        },
+        { $sort: { enrolledStudentsCount: -1 } },
+        { $limit: 6 },
+      ];
+      
 
+      const result = await classesCollection.aggregate(pipeline).toArray();
       res.send(result);
     });
-
     await client.db("admin").command({ ping: 1 });
     console.log("Lets Talk server successfully connected to MongoDB!");
   } finally {
