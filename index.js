@@ -25,6 +25,32 @@ async function run() {
   try {
     // await client.connect();
 
+    // database collection
+    const usersCollection = client
+      .db("Lets-Talk-School-DB")
+      .collection("users");
+    const classesCollection = client
+      .db("Lets-Talk-School-DB")
+      .collection("classes");
+
+    // user api
+    app.post("/user", async (req, res) => {
+      console.log(userInfo);
+      const result = await usersCollection.insertOne(userInfo);
+      res.send(result);
+    });
+
+    // class api
+    app.get("/topSixClass", async (req, res) => {
+      const result = await classesCollection
+        .find()
+        .sort({ enrolledStudentsId: -1 })
+        .limit(4)
+        .toArray();
+
+      res.send(result);
+    });
+
     await client.db("admin").command({ ping: 1 });
     console.log("Lets Talk server successfully connected to MongoDB!");
   } finally {
