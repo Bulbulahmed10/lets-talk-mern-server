@@ -142,6 +142,13 @@ async function run() {
       res.send(result);
     });
 
+    // instructor api 
+    app.get("/allInstructors", async (req, res) => {
+      const filter = {role: 'instructor'}
+      const result = await usersCollection.find(filter).toArray()
+      res.send(result)
+    })
+
     // class api
     app.get("/topSixClass", async (req, res) => {
       const pipeline = [
