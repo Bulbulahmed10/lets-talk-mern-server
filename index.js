@@ -112,7 +112,10 @@ async function run() {
       res.send(result);
     });
 
-    
+    app.get("/admin/allUsers", verifyJWT, verifyAdmin, async (req, res) => {
+      const result = await usersCollection.find().toArray();
+      res.send(result);
+    });
 
     app.post("/user", async (req, res) => {
       const userInfo = req.body;
@@ -120,7 +123,24 @@ async function run() {
       res.send(result);
     });
 
-    
+    app.patch("/admin/updateUser", verifyJWT, verifyAdmin, async (req, res) => {
+      const { role, email } = req.body;
+
+      const filter = { email: email };
+      const options = { upsert: true };
+      const updateDoc = {
+        $set: {
+          role: role,
+        },
+      };
+      const result = await usersCollection.updateOne(
+        filter,
+        updateDoc,
+        options
+      );
+
+      res.send(result);
+    });
 
     // class api
     app.get("/topSixClass", async (req, res) => {
