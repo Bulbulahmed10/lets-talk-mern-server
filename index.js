@@ -26,7 +26,6 @@ const verifyJWT = (req, res, next) => {
     if (err) {
       return res.status(403).send({ message: "Forbidden access" });
     }
-
     req.decoded = decoded;
     next();
   });
@@ -57,6 +56,30 @@ async function run() {
       .db("Lets-Talk-School-DB")
       .collection("payment");
 
+    // verify middleware
+    const verifyInstructor = async (req, res, next) => {
+      const email = req.decoded.email;
+      const query = { email: email };
+      const user = await usersCollection.findOne(query);
+      if (user?.role !== "instructor") {
+        return res
+          .status(403)
+          .send({ error: true, message: "forbidden message" });
+      }
+      next();
+    };
+    const verifyAdmin = async (req, res, next) => {
+      const email = req.decoded.email;
+      const query = { email: email };
+      const user = await usersCollection.findOne(query);
+      if (user?.role !== "admin") {
+        return res
+          .status(403)
+          .send({ error: true, message: "forbidden message" });
+      }
+      next();
+    };
+
     // jwt api
     app.post("/userJwtToken", (req, res) => {
       const userEmail = req.body;
@@ -67,17 +90,44 @@ async function run() {
     });
 
     // user api
+    app.get("/users/instructor/:email", verifyJWT, async (req, res) => {
+      const email = req.params.email;
+      if (req.decoded.email !== email) {
+        res.send({ admin: false });
+      }
+
+      const query = { email: email };
+      const user = await usersCollection.findOne(query);
+      const result = { isInstructor: user?.role === "instructor" };
+      res.send(result);
+    });
+    app.get("/users/admin/:email", verifyJWT, async (req, res) => {
+      const email = req.params.email;
+      if (req.decoded.email !== email) {
+        res.send({ admin: false });
+      }
+      const query = { email: email };
+      const user = await usersCollection.findOne(query);
+      const result = { isAdmin: user?.role === "admin" };
+      res.send(result);
+    });
+
+    
+
     app.post("/user", async (req, res) => {
       const userInfo = req.body;
       const result = await usersCollection.insertOne(userInfo);
       res.send(result);
     });
+
+    
+
     // class api
     app.get("/topSixClass", async (req, res) => {
       const pipeline = [
         {
           $match: {
-            approved_status: "approve",
+            approved_status: "approved",
             enrolledStudentsId: { $exists: true },
           },
         },
@@ -93,6 +143,75 @@ async function run() {
       const result = await classesCollection.aggregate(pipeline).toArray();
       res.send(result);
     });
+
+    app.get(
+      "/instructor/myClass/:email",
+      verifyJWT,
+      verifyInstructor,
+      async (req, res) => {
+        const params = req.params.email;
+        const query = {
+          instructor_email: params,
+        };
+        const result = await classesCollection.find(query).toArray();
+        res.send(result);
+      }
+    );
+
+    app.get("/admin/allClasses", verifyJWT, verifyAdmin, async (req, res) => {
+      const result = await classesCollection.find().toArray();
+      res.send(result);
+    });
+
+    app.post("/addClass", verifyJWT, verifyInstructor, async (req, res) => {
+      const classInfo = req.body;
+      const result = await classesCollection.insertOne(classInfo);
+      res.send(result);
+    });
+
+    app.patch(
+      "/admin/updateClass",
+      verifyJWT,
+      verifyAdmin,
+      async (req, res) => {
+        const updateClassInfo = req.body;
+        const filter = { _id: new ObjectId(updateClassInfo.id) };
+        const options = { upsert: true };
+        const updateDoc = {
+          $set: {
+            approved_status: updateClassInfo.status,
+            feedback: updateClassInfo.feedback,
+          },
+        };
+        const result = await classesCollection.updateOne(
+          filter,
+          updateDoc,
+          options
+        );
+        res.send(result);
+      }
+    );
+    app.patch(
+      "/admin/updateClassFeedback",
+      verifyJWT,
+      verifyAdmin,
+      async (req, res) => {
+        const feedbackData = req.body;
+        const filter = { _id: new ObjectId(feedbackData.feedbackClassId) };
+        const options = { upsert: true };
+        const updateDoc = {
+          $set: {
+            feedback: feedbackData.feedbackValue,
+          },
+        };
+        const result = await classesCollection.updateOne(
+          filter,
+          updateDoc,
+          options
+        );
+        res.send(result);
+      }
+    );
 
     // cart api
 
@@ -125,6 +244,27 @@ async function run() {
     });
 
     // stripe payment api
+
+    app.get("/payment-history", verifyJWT, async (req, res) => {
+      const email = req.query.email;
+      if (!email) {
+        return res.send([]);
+      }
+
+      const decodedEmail = req.decoded.email;
+      if (email !== decodedEmail) {
+        return res.status(403).send({ message: "Invalid email", error: true });
+      }
+      const query = { email: email };
+      const options = {
+        sort: {
+          date: -1,
+        },
+      };
+      const result = await paymentCollection.find(query, options).toArray();
+      res.send(result);
+    });
+
     app.post("/create-stripe-payment-intent", verifyJWT, async (req, res) => {
       const { parsableTotalPrice } = req.body;
       console.log(parsableTotalPrice);
