@@ -142,12 +142,12 @@ async function run() {
       res.send(result);
     });
 
-    // instructor api 
+    // instructor api
     app.get("/allInstructors", async (req, res) => {
-      const filter = {role: 'instructor'}
-      const result = await usersCollection.find(filter).toArray()
-      res.send(result)
-    })
+      const filter = { role: "instructor" };
+      const result = await usersCollection.find(filter).toArray();
+      res.send(result);
+    });
 
     // class api
     app.get("/topSixClass", async (req, res) => {
@@ -168,6 +168,12 @@ async function run() {
       ];
 
       const result = await classesCollection.aggregate(pipeline).toArray();
+      res.send(result);
+    });
+
+    app.get("/allClasses", async (req, res) => {
+      const filter = { approved_status: "approved" };
+      const result = await classesCollection.find(filter).toArray();
       res.send(result);
     });
 
