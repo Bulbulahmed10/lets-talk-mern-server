@@ -189,6 +189,15 @@ async function run() {
       res.send(result);
     });
 
+    app.post("/classes/enroll", verifyJWT, async (req, res) => {
+      const { classIds, studentEmail } = req.body;
+      const result = await classesCollection.updateMany(
+        { _id: { $in: classIds.map((id) => new ObjectId(id)) } },
+        { $push: { enrolledStudentsId: studentEmail } }
+      );
+      res.send(result);
+    });
+
     app.patch(
       "/admin/updateClass",
       verifyJWT,
@@ -287,7 +296,7 @@ async function run() {
 
     app.post("/create-stripe-payment-intent", verifyJWT, async (req, res) => {
       const { parsableTotalPrice } = req.body;
-      console.log(parsableTotalPrice);
+
       const amount = parsableTotalPrice * 100;
       const paymentIntent = await stripe.paymentIntents.create({
         amount: parseInt(amount),
