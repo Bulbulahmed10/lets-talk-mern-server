@@ -190,12 +190,10 @@ async function run() {
         res.send(result);
       }
     );
-
     app.get("/admin/allClasses", verifyJWT, verifyAdmin, async (req, res) => {
       const result = await classesCollection.find().toArray();
       res.send(result);
     });
-
     app.post("/addClass", verifyJWT, verifyInstructor, async (req, res) => {
       const classInfo = req.body;
       const result = await classesCollection.insertOne(classInfo);
@@ -256,7 +254,6 @@ async function run() {
     );
 
     // cart api
-
     app.get("/carts", verifyJWT, async (req, res) => {
       const email = req.query.email;
       if (!email) {
@@ -286,7 +283,6 @@ async function run() {
     });
 
     // stripe payment api
-
     app.get("/payment-history", verifyJWT, async (req, res) => {
       const email = req.query.email;
       if (!email) {
